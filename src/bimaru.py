@@ -16,7 +16,7 @@ from search import (
     greedy_search,
     recursive_best_first_search,
 )
-
+import numpy as np
 
 class BimaruState:
     state_id = 0
@@ -34,28 +34,36 @@ class BimaruState:
 
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
+    def __init__(self, row, col, boats):
+        self.row = row
+        self.col = col
+        self.boats = boats
 
     def get_value(self, row: int, col: int) -> str:
         """Devolve o valor na respetiva posição do tabuleiro."""
         # TODO
         pass
 
-    def adjacent_vertical_values(self, row: int, col: int) -> (str, str):
+    def adjacent_vertical_values(self, row: int, col: int):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
         # TODO
         pass
 
-    def adjacent_horizontal_values(self, row: int, col: int) -> (str, str):
+    def adjacent_horizontal_values(self, row: int, col: int):
         """Devolve os valores imediatamente à esquerda e à direita,
         respectivamente."""
         # TODO
         pass
 
+    def add_tile(self, x: int, y: int, type:str):
+        self.boats[y][x] = type
+        self.row[y] -= 1
+        self.col[x] -= 1
+
     @staticmethod
     def parse_instance():
-        """Lê o test do standard input (stdin) que é passado como argumento
-        e retorna uma instância da classe Board.
+        """Lê o test do standard input (stdin) e retorna uma instância da classe Board.
 
         Por exemplo:
             $ python3 bimaru.py < input_T01
@@ -64,9 +72,31 @@ class Board:
             > line = stdin.readline().split()
         """
         # TODO
-        pass
+        row = np.array(list(map(int, sys.stdin.readline().split()[1:])))
+        col = np.array(list(map(int, sys.stdin.readline().split()[1:])))
+        print(f"{row}\n{col}\n\n")
+
+        boats = np.empty((10, 10), str)
+
+        board = Board(row, col, boats)
+        
+        for _ in range(int(sys.stdin.readline())):
+            line = sys.stdin.readline().split()[1:]
+            y = int(line[0])
+            x = int(line[1])
+            board.add_tile(x, y, line[2])
+        
+        write = f"{board.col}\n"
+        for i in range(10):
+            write += f"{board.row[i]}{board.boats[i]}\n"
+
+        print(write)        
+        return board
 
     # TODO: outros metodos da classe
+    def print():
+        #TODO
+        pass
 
 
 class Bimaru(Problem):
@@ -110,4 +140,8 @@ if __name__ == "__main__":
     # Usar uma técnica de procura para resolver a instância,
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
+
+    board = Board.parse_instance()
+    #board.print()
+
     pass
