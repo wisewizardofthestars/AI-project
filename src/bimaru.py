@@ -18,6 +18,19 @@ from search import (
 )
 import numpy as np
 
+BOATS_VER = [
+    ["c"],
+    ["t", "b"],
+    ["t", "m", "b"],
+    ["t", "m", "m", "b"]
+]
+BOATS_HOR = [
+    ["c"],
+    ["l", "r"],
+    ["l", "m", "r"],
+    ["l", "m", "m", "r"]
+]
+
 class BimaruState:
     state_id = 0
 
@@ -38,28 +51,88 @@ class Board:
         self.row = row
         self.col = col
         self.boats = boats
+        self.count = [0 for _ in range(4)]
+        
+    def get_value(self, x: int, y: int) -> str:
+        return self.boats[y][x]
+    
+    def set_value(self, x: int, y: int, type: str):
+        self.boats[y][x] = type
+        if type not in (".", "W"):
+            self.row[y] -= 1
+            self.col[x] -= 1
 
-    def get_value(self, row: int, col: int) -> str:
-        """Devolve o valor na respetiva posição do tabuleiro."""
-        # TODO
-        pass
+    def is_empty(self, x: int, y: int):
+        return self.get_value(x, y) == ""
 
-    def adjacent_vertical_values(self, row: int, col: int):
+    def adjacent_vertical_values(self, x: int, y: int):
         """Devolve os valores imediatamente acima e abaixo,
         respectivamente."""
-        # TODO
-        pass
+        return list(filter(lambda p: 0<=p[0]<10 and 0<=p[1]<10, [
+            (x, y+1),
+            (x, y-1),
+        ]))
 
-    def adjacent_horizontal_values(self, row: int, col: int):
+    def adjacent_horizontal_values(self, x: int, y: int):
         """Devolve os valores imediatamente à esquerda e à direita,
         respectivamente."""
-        # TODO
-        pass
+        return list(filter(lambda p: 0<=p[0]<10 and 0<=p[1]<10, [
+            (x+1, y),
+            (x-1, y),
+        ]))
 
-    def add_tile(self, x: int, y: int, type:str):
-        self.boats[y][x] = type
-        self.row[y] -= 1
-        self.col[x] -= 1
+    def diagonal_values(self, x: int, y: int):
+        return list(filter(lambda p: 0<=p[0]<10 and 0<=p[1]<10, [
+            (x+1, y+1),
+            (x+1, y-1),
+            (x-1, y+1),
+            (x-1, y-1)
+        ]))
+    
+    def boat_pos_values(self, x: int, y: int, size: int, ver: bool):
+        values = []
+        if ver:
+            values += [(x, b) for b in range(y, y+size) if 0<=b<10]
+        else:
+            values += [(a, y) for a in range(x, x+size) if 0<=a<10]
+
+        if len(values) == size:
+            return values
+        else:
+            raise ValueError("WRONG: impossible to put boat here")
+
+    def clear_surronding(self, x: int, y: int):
+        values = self.diagonal_values(x, y)
+        tile = self.get_value(x, y).lower()
+        if tile == "c":
+            values += self.adjacent_horizontal_values(x, y)
+            values += self.adjacent_vertical_values(x, y)
+        elif tile == "t":
+            values += self.adjacent_horizontal_values(x, y)
+            #TODO add top-top tile
+        elif tile == "b":
+            values += self.adjacent_horizontal_values(x, y)
+            #TODO
+        elif tile == "l":
+            values += self.adjacent_vertical_values(x, y)
+            #TODO
+        elif tile == "r":
+            values += self.adjacent_vertical_values(x, y)
+            #TODO
+        for pos in values:
+            if self.is_empty(pos[0], pos[1]):
+                self.set_value(pos[0], pos[1], ".")
+
+    
+    def add_boat(self, x: int, y: int, size: int, ver: bool):
+        boat = BOATS_VER[size-1] if ver else BOATS_HOR[size-1]
+        i = 0
+        pos = self.boat_pos_values(x, y, size, ver)
+        for p in pos:
+            if not self.is_empty(x, y):
+                raise ValueError("WRONG: already filled")
+            self.set_value(p[0], p[1], boat[i])
+            i += 1
 
     @staticmethod
     def parse_instance():
@@ -74,7 +147,7 @@ class Board:
         # TODO
         row = np.array(list(map(int, sys.stdin.readline().split()[1:])))
         col = np.array(list(map(int, sys.stdin.readline().split()[1:])))
-        print(f"{row}\n{col}\n\n")
+        print(f"{col}\n{row}\n\n")
 
         boats = np.empty((10, 10), str)
 
@@ -84,19 +157,26 @@ class Board:
             line = sys.stdin.readline().split()[1:]
             y = int(line[0])
             x = int(line[1])
-            board.add_tile(x, y, line[2])
-        
-        write = f"{board.col}\n"
-        for i in range(10):
-            write += f"{board.row[i]}{board.boats[i]}\n"
-
-        print(write)        
+            board.set_value(x, y, line[2])
+       
         return board
 
     # TODO: outros metodos da classe
-    def print():
-        #TODO
-        pass
+    def print(self):
+        #TODO: this version of print is only for debug purposes
+        i = 0
+        string = " "
+        for num in self.col:
+            string += f"{num}"
+        print(string)
+        for line in self.boats:
+            string = f"{self.row[i]}"
+            for char in line:
+                string += char
+                if char == "":
+                    string += "-"
+            print(string)
+            i += 1
 
 
 class Bimaru(Problem):
@@ -142,6 +222,9 @@ if __name__ == "__main__":
     # Imprimir para o standard output no formato indicado.
 
     board = Board.parse_instance()
-    #board.print()
+    board.print()
+    #problem = Bimaru(board)
+
+    #depth_first_tree_search(problem)
 
     pass
