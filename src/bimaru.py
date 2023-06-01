@@ -124,7 +124,7 @@ class Board:
             return []
         return values
     
-    def valid_boat(self, pos: list[tuple[int, int]], ver: bool):
+    def valid_boat(self, pos: list, ver: bool):
         if not pos:
             return False
         size = len(pos)
@@ -301,6 +301,12 @@ class Bimaru(Problem):
         estão preenchidas de acordo com as regras do problema."""
         # TODO
         for num in state.board.row:
+            if num != 0:
+                return False
+        for num in state.board.col:
+            if num != 0:
+                return False
+        for num in state.board.count:
             if num != 0:
                 return False
         state.board.print()

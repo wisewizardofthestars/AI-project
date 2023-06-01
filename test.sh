@@ -1,4 +1,4 @@
-for x in instances-students/*.txt; do
+for x in tests/*.txt; do
     python3 src/bimaru.py < $x > ${x%.txt}.myout;
 
     diff -cB -w ${x%.txt}.out ${x%.txt}.myout > ${x%.txt}.diff ;
