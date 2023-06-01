@@ -50,11 +50,11 @@ class BimaruState:
 
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
-    def __init__(self, row, col, boats):
+    def __init__(self, row, col, boats, count=[4, 3, 2, 1]):
         self.row = row
         self.col = col
         self.boats = boats
-        self.count = [i for i in range(4, 0, -1)]
+        self.count = count
         
     def get_value(self, x: int, y: int) -> str:
         return self.boats[y][x]
@@ -67,6 +67,9 @@ class Board:
 
     def is_empty(self, x: int, y: int):
         return self.get_value(x, y) == ""
+    
+    def is_water(self, x: int, y: int):
+        return self.get_value(x, y) in (".", "W")
 
     def adjacent_vertical_values(self, x: int, y: int):
         """Devolve os valores imediatamente acima e abaixo,
@@ -92,36 +95,6 @@ class Board:
             (x-1, y-1)
         ]))
     
-    #TODO: tornar estas duas funções numa só
-    # also make it o that something like L l m m r cannot happen
-    # also check if row or col becomes negative if boat is added
-    def boat_pos_values(self, x: int, y: int, size: int, ver: bool):
-        values = []
-        if ver:
-            values += [(x, b) for b in range(y, y+size) if 0<=b<10]
-        else:
-            values += [(a, y) for a in range(x, x+size) if 0<=a<10]
-
-        if len(values) == size:
-            return values
-        else:
-            return []
-        
-    def valid_boat_pos(self, x: int, y: int, size: int, ver: bool):
-        pos = self.boat_pos_values(x, y, size, ver)
-        if not pos:
-            return []
-        boat = BOATS_VER[size-1] if ver else BOATS_HOR[size-1]
-        i = 0
-        for p in pos:
-            val = self.get_value(p[0], p[1])
-            if (val not in ("", ".", "W") and val.casefold() != boat[i].casefold()) or val in (".", "W"):
-                return []
-            i += 1
-
-        print(f"valid pos: {pos}")
-        return pos
-        
     def clear_lines(self):
         for i in range(10):
             if self.row[i] == 0:
@@ -141,39 +114,92 @@ class Board:
                 self.print()
                 raise Exception("Invalid board")
 
-    def clear_surronding(self, x: int, y: int):
-        tile = self.get_value(x, y).lower()
-        if tile in (".", "w"):
-            return
+    def boat_position(self, x: int, y: int, size: int, ver: bool):
+        if ver:
+            values = [(x, b) for b in range(y, y+size) if 0<=b<10]
+        else:
+            values = [(a, y) for a in range(x, x+size) if 0<=a<10]
+
+        if len(values) != size:
+            return []
+        return values
+    
+    def valid_boat(self, pos: list[tuple[int, int]], ver: bool):
+        if not pos:
+            return False
+        size = len(pos)
+        boat = BOATS_VER[size-1] if ver else BOATS_HOR[size-1]
+        i = 0
+        new_tiles = 0
+
+        for p in pos:
+            val = self.get_value(p[0], p[1])
+            if self.is_empty(p[0], p[1]):
+                new_tiles += 1
+            elif val != boat[i].upper(): #TODO: mistake here
+                return False
+            elif self.is_water(p[0], p[1]):
+                return False
+
+            sur = self.get_surronding(p[0], p[1], boat[i])
+            for s in sur:
+                if not self.is_empty(s[0], s[1]) and not self.is_water(s[0], s[1]):
+                    return False
+                
+            i += 1
+        
+        if ver:
+            if self.col[pos[0][0]] < new_tiles:
+                return False
+        else:
+            if self.row[pos[0][1]] < new_tiles:
+                return False
+            
+        return True
+            
+
+    def get_surronding(self, x: int, y: int, tile: str=""):
+        if tile == "":
+            tile = self.get_value(x, y).lower()
+            if self.is_water(x, y):
+                return []
+
         values = self.diagonal_values(x, y)
         if tile == "c":
             values += self.adjacent_horizontal_values(x, y)
             values += self.adjacent_vertical_values(x, y)
         elif tile == "t":
             values += self.adjacent_horizontal_values(x, y)
-            #TODO add top-top tile
+            if y-1 >= 0:
+                values += [(x, y-1)]
         elif tile == "b":
             values += self.adjacent_horizontal_values(x, y)
-            #TODO
+            if y+1 < 10:
+                values += [(x, y+1)]
         elif tile == "l":
             values += self.adjacent_vertical_values(x, y)
-            #TODO
+            if x-1 >= 0:
+                values += [(x-1, y)]
         elif tile == "r":
             values += self.adjacent_vertical_values(x, y)
-            #TODO
+            if x+1 < 10:
+                values += [(x+1, y)]
+
+        return values
+    
+    def clear_surronding(self, x: int, y: int):
+        values = self.get_surronding(x, y)
         for pos in values:
             if self.is_empty(pos[0], pos[1]):
                 self.set_value(pos[0], pos[1], ".")
-
-    
-    def add_boat(self, pos: list, ver: bool):
-        size = len(pos)
+        
+    def add_boat(self, pos: list, size: int, ver: bool):
         boat = BOATS_VER[size-1] if ver else BOATS_HOR[size-1]
         i = 0
         for p in pos:
             if self.is_empty(p[0], p[1]):
                 self.set_value(p[0], p[1], boat[i])
-                board.clear_surronding(p[0], p[1])
+            self.clear_surronding(p[0], p[1])
             i += 1
         self.clear_lines()
         #TODO: clear lines só das lines q sofreram alterações
@@ -192,7 +218,7 @@ class Board:
         # TODO
         row = list(map(int, sys.stdin.readline().split()[1:]))
         col = list(map(int, sys.stdin.readline().split()[1:]))
-        print(f"{col}\n{row}\n\n")
+        #print(f"{col}\n{row}\n\n")
 
         boats = np.empty((10, 10), str)
 
@@ -213,11 +239,12 @@ class Board:
         #TODO: this version of print is only for debug purposes
         i = 0
         string = " "
-        for num in self.col:
-            string += f"{num}"
-        print(string)
+        # for num in self.col:
+        #     string += f"{num}"
+        #print(string)
         for line in self.boats:
-            string = f"{self.row[i]}"
+            #string = f"{self.row[i]}"
+            string = ""
             for char in line:
                 string += char
                 if char == "":
@@ -237,20 +264,22 @@ class Bimaru(Problem):
         """Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento."""
         board: Board = state.board
+        #board.print()
         actions = []
         for size in range(4, -1, -1):
             if board.count[size-1] != 0:
                 for i in range(10):
-                    for j in range(10-size):
-                        pos = board.valid_boat_pos(i, j, size, VER)
-                        if pos:
-                            actions += [(pos, VER)]
-                for i in range(10-size):
-                    for j in range(10):
-                        pos = board.valid_boat_pos(i, j, size, HOR)
-                        if pos:
-                            actions += [(pos, HOR)]
-            break
+                    for j in range(10-size+1):
+                        pos = board.boat_position(i, j, size, VER)
+                        if board.valid_boat(pos, VER):
+                            actions += [(pos, size, VER)]
+                for j in range(10):
+                    for i in range(10-size+1):
+                        pos = board.boat_position(i, j, size, HOR)
+                        if board.valid_boat(pos, HOR):
+                            actions += [(pos, size, HOR)]
+                break
+        #print("actions: ", actions)
         return actions
 
     def result(self, state: BimaruState, action):
@@ -258,9 +287,12 @@ class Bimaru(Problem):
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-        new = Board(state.board.row.copy(), state.board.col.copy(), state.board.boats.copy())
-        new.add_boat(action[0], action[1])
-        new.print()
+        new = Board(state.board.row.copy(), state.board.col.copy(), state.board.boats.copy(), state.board.count.copy())
+        new.add_boat(action[0], action[1], action[2])
+        #print("\naction taken:", action)
+        #new.print()
+        #print(new.count)
+        #print()
         return BimaruState(new)
 
     def goal_test(self, state: BimaruState):
@@ -268,10 +300,10 @@ class Bimaru(Problem):
         um estado objetivo. Deve verificar se todas as posições do tabuleiro
         estão preenchidas de acordo com as regras do problema."""
         # TODO
-        for row in state.board.boats:
-            for char in row:
-                if char == "":
-                    return False
+        for num in state.board.row:
+            if num != 0:
+                return False
+        state.board.print()
         return True
 
     def h(self, node: Node):
@@ -290,7 +322,7 @@ if __name__ == "__main__":
     # Imprimir para o standard output no formato indicado.
 
     board = Board.parse_instance()
-    board.print()
+    #board.print()
     problem = Bimaru(board)
 
     depth_first_tree_search(problem)
