@@ -50,11 +50,12 @@ class BimaruState:
 
 class Board:
     """Representação interna de um tabuleiro de Bimaru."""
-    def __init__(self, row, col, boats, count=[4, 3, 2, 1]):
+    def __init__(self, row, col, boats, count=[4, 3, 2, 1], hint=[]):
         self.row = row
         self.col = col
         self.boats = boats
         self.count = count
+        self.hint = hint
         
     def get_value(self, x: int, y: int) -> str:
         return self.boats[y][x]
@@ -113,6 +114,41 @@ class Board:
             if self.col[i] < 0:
                 self.print()
                 raise Exception("Invalid board")
+            
+    def incomplete_boat(self, x: int, y: int, ver: bool):
+        val = self.get_value(x, y)
+        values = []
+        if ver:
+            if val == "T":
+                for size in range(2, 5):
+                    new = [(x, b) for b in range(y, y+size) if 0<=b<10]
+                    if len(new) == size:
+                        values += [new]
+            elif val == "B":
+                for size in range(2, 5):
+                    new = [(x, b) for b in range(y-size+1, y+1) if 0<=b<10]
+                    if len(new) == size:
+                        values += [new]
+            elif val == "M":
+                pass
+            else:
+                return []
+        else:
+            if val == "M":
+                pass
+            elif val == "L":
+                for size in range(2, 5):
+                    new = [(a, y) for a in range(x, x+size) if 0<=a<10]
+                    if len(new) == size:
+                        values += [new]
+            elif val == "R":
+                for size in range(2, 5):
+                    new = [(a, y) for a in range(x-size+1, x+1) if 0<=a<10]
+                    if len(new) == size:
+                        values += [new]
+            else:
+                return []
+        return values
 
     def boat_position(self, x: int, y: int, size: int, ver: bool):
         if ver:
@@ -229,6 +265,7 @@ class Board:
             y = int(line[0])
             x = int(line[1])
             board.set_value(x, y, line[2])
+            board.hint += [(x, y)]
             board.clear_surronding(x, y)
 
         board.clear_lines()
@@ -266,6 +303,18 @@ class Bimaru(Problem):
         board: Board = state.board
         #board.print()
         actions = []
+        for hint in board.hint:
+            positions = board.incomplete_boat(hint[0], hint[1], VER)
+            for pos in positions:
+                if board.valid_boat(pos, VER):
+                    actions += [(pos, len(pos), VER)]
+            positions = board.incomplete_boat(hint[0], hint[1], HOR)
+            for pos in positions:
+                if board.valid_boat(pos, HOR):
+                    actions += [(pos, len(pos), HOR)]
+            board.hint.remove(hint)
+            if actions:
+                return actions
         for size in range(4, -1, -1):
             if board.count[size-1] != 0:
                 for i in range(10):
@@ -287,7 +336,7 @@ class Bimaru(Problem):
         'state' passado como argumento. A ação a executar deve ser uma
         das presentes na lista obtida pela execução de
         self.actions(state)."""
-        new = Board(state.board.row.copy(), state.board.col.copy(), state.board.boats.copy(), state.board.count.copy())
+        new = Board(state.board.row.copy(), state.board.col.copy(), state.board.boats.copy(), state.board.count.copy(), state.board.hint.copy())
         new.add_boat(action[0], action[1], action[2])
         #print("\naction taken:", action)
         #new.print()
