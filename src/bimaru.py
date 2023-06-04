@@ -265,8 +265,11 @@ class Board:
             y = int(line[0])
             x = int(line[1])
             board.set_value(x, y, line[2])
-            board.hint += [(x, y)]
             board.clear_surronding(x, y)
+            if line[2] == "C":
+                board.count[0] -= 1
+            else:
+                board.hint += [(x, y)]
 
         board.clear_lines()
         return board
